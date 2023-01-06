@@ -154,33 +154,33 @@ class PartialSudokuState:
                         self.matrix[key] = temp_values
 
         # cell elimination
-        # ii - cell - row
-        delete_cell_rows()
-        delete_cell_col()
+        delete_cell_rows() # cell - row
+        delete_cell_col() # cell - col
         # Round pos down to the nearest multiple of block_size (get top left position of block)
-        # iv - cell - block
         (coly, rowx) = map(lambda coord: (coord // 3) * 3, (col, row))
-        delete_cell_block((rowx, coly))
+        delete_cell_block((rowx, coly)) # cell - block
         # i - cell elimination
         if self.matrix is not None and ('cell', (row, col)) in self.matrix:
             self.matrix.pop(('cell', (row, col)))
 
-        # row elimination
+        # ii - row elimination
         if self.matrix is not None and ('row', (row, value)) in self.matrix:
             self.matrix.pop(('row', (row, value)))
 
-        # col elimination
+        # iii - col elimination
         if self.matrix is not None and ('col', (col, value)) in self.matrix:
             self.matrix.pop(('col', (col, value)))
 
-        # block elimination
+        # iv - block elimination
         block_index = self.block_cords.index((rowx, coly))
         if self.matrix is not None and ('block', (block_index, value)) in self.matrix:
             self.matrix.pop(('block', (block_index, value)))
 
-        # remove row possible vals
+        # v - remove row possible vals
         row_remove_possible_cords()
+        # vi - remove col possible vals
         col_remove_possible_cords()
+        # vii - remove block possible vals
         block_remove_possible_cords()
 
     def pick_constraint(self):
@@ -220,7 +220,7 @@ class PartialSudokuState:
         return state
 
 
-def algorithm_x(partial_state):
+def algorithm_alice(partial_state):
     constraint = partial_state.pick_constraint()  # Return an uncovered column with the minimal number of rows.
     if constraint is None:
         return None
@@ -232,7 +232,7 @@ def algorithm_x(partial_state):
         if partial_state.is_goal():
             return partial_state  # if the current state is goal that is returned
         # continue trying with the rcv triples:
-        deep_partial_state = algorithm_x(partial_state)
+        deep_partial_state = algorithm_alice(partial_state)
         if deep_partial_state is not None:
             return deep_partial_state # back tracking lead to a partial success
         partial_state = copied_state # The rcv triples doesn't lead to a solved sudoku goes back to the previous state
@@ -241,90 +241,9 @@ def algorithm_x(partial_state):
 def sudoku_solver(sudoku):
     error_grid = np.array([[-1 for _ in range(9)] for _ in range(9)])
     partial_state = PartialSudokuState(sudoku)
-    goal = algorithm_x(partial_state)
+    goal = algorithm_alice(partial_state)
     if goal is None:
         return error_grid
     else:
         return goal.final_values
 
-
-SKIP_TESTS = False
-
-
-def tests():
-    import time
-    difficulties = ['very_easy', 'easy', 'medium', 'hard']
-    average_difficulty = []
-    for difficulty in difficulties:
-        print(f"Testing {difficulty} sudokus")
-
-        sudokus = np.load(f"data/{difficulty}_puzzle.npy")
-        solutions = np.load(f"data/{difficulty}_solution.npy")
-        # sudokus = [
-        #     np.array([
-        #     [0, 0, 0, 0, 0, 6, 0, 0, 1],
-        #     [0, 0, 8, 5, 7, 0, 0, 0, 0],
-        #     [1, 0, 0, 0, 0, 3, 9, 0, 0],
-        #     [0, 0, 1, 0, 0, 9, 0, 0, 0],
-        #     [8, 5, 0, 0, 4, 0, 0, 0, 0],
-        #     [0, 0, 0, 1, 0, 0, 2, 0, 6],
-        #     [0, 0, 7, 0, 0, 0, 0, 4, 0],
-        #     [0, 0, 0, 0, 3, 0, 0, 0, 8],
-        #     [0, 2, 0, 0, 0, 0, 0, 5, 0],
-        # ]),
-        #     np.array([
-        #         [0, 2, 0, 0, 0, 0, 0, 0, 0],
-        #         [0, 0, 0, 0, 1, 4, 0, 9, 6],
-        #         [0, 5, 0, 6, 0, 0, 2, 3, 0],
-        #         [5, 0, 4, 0, 0, 0, 0, 0, 0],
-        #         [0, 0, 0, 0, 0, 0, 3, 0, 0],
-        #         [1, 6, 0, 0, 7, 0, 9, 0, 4],
-        #         [2, 9, 0, 0, 4, 0, 7, 0, 0],
-        #         [0, 0, 0, 9, 0, 0, 6, 0, 0],
-        #         [6, 4, 0, 0, 0, 0, 0, 2, 0],
-        #     ])
-        # ]
-        #solutions = np.load(f"data/{difficulty}_solution.npy")
-
-        count = 0
-        time_for_difficulty = []
-        for i in range(len(sudokus)):
-            sudoku = sudokus[i].copy()
-            #print(f"This is {difficulty} sudoku number", i)
-            #print(sudoku)
-
-            start_time = time.process_time()
-            your_solution = sudoku_solver(sudoku)
-            end_time = time.process_time()
-            time_for_difficulty.append(end_time - start_time)
-
-            #print(f"This is your solution for {difficulty} sudoku number", i)
-            #print(your_solution)
-
-            #print("Is your solution correct?")
-            if np.array_equal(your_solution, solutions[i]):
-                # print("Yes! Correct solution.")
-                count += 1
-            #else:
-                #print("No, the correct solution is:")
-                # print(solutions[i])
-
-            #print("This sudoku took", end_time - start_time, "seconds to solve.\n")
-
-        print(f"{count}/{len(sudokus)} {difficulty} sudokus correct")
-        average_difficulty.append(mean(time_for_difficulty))
-        if count < len(sudokus):
-            break
-    print("Printing Summary Statistics")
-    print(difficulties)
-    print(average_difficulty)
-    for difficulty_no, difficulty in enumerate(difficulties):
-        print(f"{difficulties[difficulty_no]} time: {average_difficulty[difficulty_no]}")
-    print(f"Solved all 60 correctly in {mean(average_difficulty)}")
-
-
-
-
-
-if not SKIP_TESTS:
-    tests()
